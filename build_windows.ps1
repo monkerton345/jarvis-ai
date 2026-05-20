@@ -46,8 +46,13 @@ Write-Host "  Activating virtual environment..." -ForegroundColor Cyan
 & .\.venv\Scripts\Activate.ps1
 
 # Install deps
-Write-Host "  Installing dependencies..." -ForegroundColor Cyan
+Write-Host "  Upgrading pip..." -ForegroundColor Cyan
 pip install --upgrade pip --quiet
+
+Write-Host "  Clearing pip cache (prevents cache warnings)..." -ForegroundColor Cyan
+pip cache purge 2>$null
+
+Write-Host "  Installing dependencies..." -ForegroundColor Cyan
 pip install -r requirements.txt --quiet
 pip install pyinstaller --quiet
 pip install pyaudio --quiet 2>$null

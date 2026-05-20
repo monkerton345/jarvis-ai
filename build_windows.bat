@@ -43,6 +43,9 @@ call .venv\Scripts\activate.bat
 echo  [*] Upgrading pip...
 python -m pip install --upgrade pip --quiet
 
+echo  [*] Clearing pip cache (prevents cache warnings)...
+pip cache purge >nul 2>&1
+
 echo  [*] Installing dependencies...
 pip install -r requirements.txt --quiet
 
