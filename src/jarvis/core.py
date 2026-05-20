@@ -16,7 +16,6 @@ from .voice.wake_word import WakeWordDetector
 from .brain.llm import Brain
 from .brain.personality import STARTUP_LINES, WAKE_RESPONSES, SHUTDOWN_LINES, NOT_UNDERSTOOD_LINES
 from .ui.terminal import JarvisUI
-from . import skills
 
 logger = logging.getLogger("jarvis.core")
 
@@ -26,12 +25,12 @@ class Jarvis:
         self.config = config
         self.ui = JarvisUI(debug=config.debug_mode)
 
-        self._mode = "voice"  # "voice" or "text"
+        self._mode = "voice"
         self._running = False
         self._listening = False
         self._wake_lock = threading.Lock()
 
-        # Initialize subsystems
+        # ── Voice ──────────────────────────────────────────────────────────
         self.ui.status("Initializing speech synthesis...")
         self.speaker = Speaker(
             voice=config.audio.tts_voice,
@@ -61,31 +60,43 @@ class Jarvis:
             max_record_seconds=config.audio.max_record_seconds,
         )
 
-        # Set timer callback so alerts are spoken
+        # ── Knowledge Base ─────────────────────────────────────────────────
+        self.ui.status("Loading knowledge base...")
+        try:
+            from .knowledge.base import KnowledgeBase
+            self.kb = KnowledgeBase(db_path=config.workspace_dir / "knowledge")
+            stats = self.kb.stats()
+            if stats["ready"]:
+                self.ui.status(f"Knowledge base online — {stats['chunks']} chunks indexed.", icon="✓")
+            else:
+                self.ui.warn("Knowledge base offline (install chromadb + sentence-transformers to enable)")
+        except Exception as e:
+            logger.warning(f"Knowledge base unavailable: {e}")
+            self.kb = None
+
+        # ── Timer callback ─────────────────────────────────────────────────
         from .skills import timers
         timers.set_speak_callback(self._speak_sync)
 
         self.ui.status("Jarvis initialized.", icon="✓")
 
     def start(self):
-        """Start Jarvis — shows banner, speaks startup line, enters main loop."""
+        """Start Jarvis."""
         self.ui.print_banner()
         self._running = True
 
-        # Startup greeting
         startup = random.choice(STARTUP_LINES)
         self.ui.jarvis_response(startup)
         self._speak_sync(startup)
 
         if self._mode == "voice" and self.config.audio.use_wake_word:
             self._start_wake_word_detector()
-            self.ui.status("Listening for wake word. Say 'Jarvis' to activate.")
-            self._text_loop()  # Also allow text input
+            self.ui.status("Listening for wake word. Say 'Jarvis' or press Ctrl+Shift+J.")
+            self._text_loop()
         else:
             self._text_loop()
 
     def _start_wake_word_detector(self):
-        """Launch wake word detector in background."""
         self._wake_detector = WakeWordDetector(
             wake_words=self.config.audio.wake_words,
             hotkey="ctrl+shift+j",
@@ -93,7 +104,6 @@ class Jarvis:
         self._wake_detector.start(on_wake=self._on_wake_word)
 
     def _on_wake_word(self):
-        """Called when wake word is detected."""
         with self._wake_lock:
             if self._listening:
                 return
@@ -105,7 +115,6 @@ class Jarvis:
 
         self.ui.show_listening()
         text = self.listener.listen_once(timeout=10)
-
         self._listening = False
 
         if not text:
@@ -117,7 +126,7 @@ class Jarvis:
         self._process(text)
 
     def _text_loop(self):
-        """Main text input loop (always available, even in voice mode)."""
+        """Main text input loop."""
         while self._running:
             try:
                 user_input = self.ui.user_input_prompt()
@@ -134,23 +143,39 @@ class Jarvis:
                 break
 
     def _process(self, user_input: str):
-        """Core processing pipeline: route -> LLM -> speak."""
+        """Core pipeline: skills -> knowledge -> LLM -> speak."""
         logger.debug(f"Processing: '{user_input}'")
 
-        # Check for skill routing first
-        context = self._route_skills(user_input)
+        # Gather context from all sources in parallel
+        contexts = []
 
-        # Think
+        # 1. Built-in skills
+        skill_ctx = self._route_skills(user_input)
+        if skill_ctx:
+            contexts.append(skill_ctx)
+
+        # 2. Internet
+        internet_ctx = self._route_internet(user_input)
+        if internet_ctx:
+            contexts.append(internet_ctx)
+
+        # 3. Knowledge base (RAG)
+        if self.kb:
+            kb_ctx = self.kb.query(user_input)
+            if kb_ctx:
+                contexts.append(kb_ctx)
+
+        combined_context = "\n\n---\n\n".join(contexts) if contexts else None
+
         self.ui.show_thinking()
-        response = self.brain.think(user_input, extra_context=context)
+        response = self.brain.think(user_input, extra_context=combined_context)
 
-        # Respond
         self.ui.jarvis_response(response)
         self._speak_sync(response)
 
     def _route_skills(self, query: str) -> Optional[str]:
-        """Run all skills and collect any relevant context."""
         from .skills import time_skill, weather, system, web, timers
+        from .knowledge.ingest import handle_ingest_command
 
         skill_funcs = [
             time_skill.handle,
@@ -158,6 +183,7 @@ class Jarvis:
             system.handle,
             web.handle,
             timers.handle,
+            lambda q: handle_ingest_command(q, self.kb) if self.kb else None,
         ]
 
         contexts = []
@@ -170,6 +196,15 @@ class Jarvis:
                 logger.warning(f"Skill error: {e}")
 
         return "\n".join(contexts) if contexts else None
+
+    def _route_internet(self, query: str) -> Optional[str]:
+        """Route to internet skills if query needs live data."""
+        try:
+            from .skills.internet import handle as internet_handle
+            return internet_handle(query)
+        except Exception as e:
+            logger.warning(f"Internet skill error: {e}")
+            return None
 
     def _handle_command(self, text: str) -> bool:
         """Handle special commands. Returns True if handled."""
@@ -198,10 +233,23 @@ class Jarvis:
             self.ui.success("Text mode activated.")
             return True
 
+        if cmd in ("kb stats", "knowledge stats", "knowledge base stats"):
+            if self.kb:
+                stats = self.kb.stats()
+                self.ui.status(f"Knowledge base: {stats.get('chunks', 0)} chunks indexed.")
+            else:
+                self.ui.warn("Knowledge base not available.")
+            return True
+
+        if cmd == "kb clear":
+            if self.kb:
+                self.kb.clear()
+                self.ui.success("Knowledge base cleared.")
+            return True
+
         return False
 
     def _speak_sync(self, text: str):
-        """Speak text (blocks until done)."""
         if not text:
             return
         self.ui.show_speaking()
@@ -211,7 +259,6 @@ class Jarvis:
             logger.error(f"Speech error: {e}")
 
     def _shutdown(self):
-        """Graceful shutdown."""
         self._running = False
         shutdown_line = random.choice(SHUTDOWN_LINES)
         self.ui.jarvis_response(shutdown_line)

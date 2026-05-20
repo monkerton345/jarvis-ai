@@ -3,29 +3,46 @@ python-dotenv>=1.0.0
 httpx>=0.27.0
 
 # ─── LLM ─────────────────────────────────────────────────────────────────────
-# Ollama runs locally — install from https://ollama.ai
+# Ollama runs locally — install from https://ollama.ai (no pip needed)
 # openai>=1.30.0          # Uncomment for OpenAI
 # anthropic>=0.28.0       # Uncomment for Anthropic Claude
 
 # ─── Speech-to-Text ──────────────────────────────────────────────────────────
-faster-whisper>=1.0.0     # Local offline STT (recommended)
+faster-whisper>=1.0.0     # Local offline STT
 sounddevice>=0.4.6        # Audio capture
 numpy>=1.24.0
 
 # ─── Text-to-Speech ──────────────────────────────────────────────────────────
-edge-tts>=6.1.12          # Free Microsoft Neural TTS (en-GB-RyanNeural = Jarvis voice)
+edge-tts>=6.1.12          # Free Microsoft Neural TTS (en-GB-RyanNeural)
 pygame>=2.5.0             # Audio playback
 
 # ─── Wake Word ───────────────────────────────────────────────────────────────
-# openwakeword>=0.6.0     # Uncomment for "Hey Jarvis" detection (recommended)
-keyboard>=0.13.5          # Hotkey fallback (Ctrl+Shift+J)
+# openwakeword>=0.6.0     # Uncomment for hands-free "Hey Jarvis" detection
+keyboard>=0.13.5          # Ctrl+Shift+J hotkey fallback
+
+# ─── Internet Skills ─────────────────────────────────────────────────────────
+duckduckgo-search>=6.0.0  # Free web search + news (no API key)
+beautifulsoup4>=4.12.0    # Web page reader/parser
+lxml>=5.0.0               # HTML parser backend for BeautifulSoup
+
+# ─── Knowledge Base (RAG) ────────────────────────────────────────────────────
+chromadb>=0.5.0           # Local vector database
+sentence-transformers>=3.0.0  # Offline embeddings (all-MiniLM-L6-v2)
+
+# ─── Document Ingestion (optional) ───────────────────────────────────────────
+# pdfplumber>=0.10.0      # Uncomment to ingest PDF files
+# pypdf>=4.0.0            # Lighter PDF alternative
+# python-docx>=1.1.0      # Uncomment to ingest DOCX files
 
 # ─── Skills ──────────────────────────────────────────────────────────────────
 psutil>=5.9.0             # System info skill
 
 # ─── Terminal UI ─────────────────────────────────────────────────────────────
-rich>=13.7.0              # Beautiful HUD-style terminal
+rich>=13.7.0              # Iron Man HUD-style terminal
 
-# ─── Fallback STT (optional, needs internet) ─────────────────────────────────
-# SpeechRecognition>=3.10.0  # Uncomment if faster-whisper fails
-# pyaudio>=0.2.14            # Required by SpeechRecognition mic input
+# ─── Fallback STT (optional) ─────────────────────────────────────────────────
+# SpeechRecognition>=3.10.0
+# pyaudio>=0.2.14
+
+# ─── Windows .exe packaging ──────────────────────────────────────────────────
+# pyinstaller>=6.0.0      # Run build_windows.bat — installs automatically
