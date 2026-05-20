@@ -1,0 +1,31 @@
+# ─── Core ────────────────────────────────────────────────────────────────────
+python-dotenv>=1.0.0
+httpx>=0.27.0
+
+# ─── LLM ─────────────────────────────────────────────────────────────────────
+# Ollama runs locally — install from https://ollama.ai
+# openai>=1.30.0          # Uncomment for OpenAI
+# anthropic>=0.28.0       # Uncomment for Anthropic Claude
+
+# ─── Speech-to-Text ──────────────────────────────────────────────────────────
+faster-whisper>=1.0.0     # Local offline STT (recommended)
+sounddevice>=0.4.6        # Audio capture
+numpy>=1.24.0
+
+# ─── Text-to-Speech ──────────────────────────────────────────────────────────
+edge-tts>=6.1.12          # Free Microsoft Neural TTS (en-GB-RyanNeural = Jarvis voice)
+pygame>=2.5.0             # Audio playback
+
+# ─── Wake Word ───────────────────────────────────────────────────────────────
+# openwakeword>=0.6.0     # Uncomment for "Hey Jarvis" detection (recommended)
+keyboard>=0.13.5          # Hotkey fallback (Ctrl+Shift+J)
+
+# ─── Skills ──────────────────────────────────────────────────────────────────
+psutil>=5.9.0             # System info skill
+
+# ─── Terminal UI ─────────────────────────────────────────────────────────────
+rich>=13.7.0              # Beautiful HUD-style terminal
+
+# ─── Fallback STT (optional, needs internet) ─────────────────────────────────
+# SpeechRecognition>=3.10.0  # Uncomment if faster-whisper fails
+# pyaudio>=0.2.14            # Required by SpeechRecognition mic input
