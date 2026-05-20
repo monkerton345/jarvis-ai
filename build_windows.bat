@@ -6,6 +6,9 @@
 :: OR just use build_windows.ps1 instead (recommended).
 :: ============================================================
 
+:: Always run from the folder this script lives in
+cd /d "%~dp0"
+
 :: Self-unblock this script and project files
 powershell -Command "Get-ChildItem -Path '%~dp0' -Recurse | Unblock-File" >nul 2>&1
 

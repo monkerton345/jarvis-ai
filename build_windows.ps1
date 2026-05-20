@@ -9,6 +9,9 @@
 #   Set-ExecutionPolicy Bypass -Scope Process; .\build_windows.ps1
 # ============================================================
 
+# Always run from the folder this script lives in
+Set-Location $PSScriptRoot
+
 # Self-unblock all project files (fixes SmartScreen on scripts)
 Write-Host ""
 Write-Host "  Unblocking project files..." -ForegroundColor Cyan
