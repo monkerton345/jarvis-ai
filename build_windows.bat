@@ -1,11 +1,15 @@
 @echo off
 :: ============================================================
-:: J.A.R.V.I.S. Windows Executable Builder
-:: Packages Jarvis into a standalone .exe using PyInstaller
-:: Run this from the jarvis-ai root folder
+:: J.A.R.V.I.S. Windows Build Script
+:: If Windows blocked this file, right-click → Properties
+:: → check "Unblock" → OK, then run again.
+:: OR just use build_windows.ps1 instead (recommended).
 :: ============================================================
 
-title Jarvis Build System
+:: Self-unblock this script and project files
+powershell -Command "Get-ChildItem -Path '%~dp0' -Recurse | Unblock-File" >nul 2>&1
+
+title J.A.R.V.I.S. Build System
 color 0B
 
 echo.
@@ -17,12 +21,14 @@ echo.
 :: Check Python
 python --version >nul 2>&1
 if errorlevel 1 (
-    echo  [ERROR] Python not found. Install from python.org
+    echo  [ERROR] Python not found.
+    echo  Download from: https://python.org
+    echo  Make sure to check "Add Python to PATH" during install.
     pause
     exit /b 1
 )
 
-:: Check venv
+:: Check/create venv
 if not exist ".venv" (
     echo  [*] Creating virtual environment...
     python -m venv .venv
@@ -31,6 +37,9 @@ if not exist ".venv" (
 echo  [*] Activating virtual environment...
 call .venv\Scripts\activate.bat
 
+echo  [*] Upgrading pip...
+python -m pip install --upgrade pip --quiet
+
 echo  [*] Installing dependencies...
 pip install -r requirements.txt --quiet
 
@@ -38,80 +47,44 @@ echo  [*] Installing PyInstaller...
 pip install pyinstaller --quiet
 
 echo  [*] Installing Windows audio support...
-pip install pyaudio --quiet
+pip install pyaudio --quiet 2>nul
 
-:: Create assets dir if needed
 if not exist "assets" mkdir assets
 
-:: Download a Jarvis-style icon if not present
-if not exist "assets\jarvis.ico" (
-    echo  [*] Downloading icon...
-    powershell -Command "& {Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/monkerton345/jarvis-ai/main/assets/jarvis.ico' -OutFile 'assets\jarvis.ico' -ErrorAction SilentlyContinue}"
-    if not exist "assets\jarvis.ico" (
-        echo  [!] Icon download failed - building without custom icon
-    )
-)
-
 echo.
-echo  [*] Building executable...
+echo  [*] Building Jarvis.exe ...
 echo.
 
-:: Run PyInstaller with spec file if it exists, otherwise use defaults
-if exist "jarvis.spec" (
-    pyinstaller jarvis.spec --noconfirm
-) else (
-    pyinstaller ^
-        --onefile ^
-        --name "Jarvis" ^
-        --icon "assets\jarvis.ico" ^
-        --add-data "src;src" ^
-        --add-data ".env.example;." ^
-        --hidden-import "faster_whisper" ^
-        --hidden-import "edge_tts" ^
-        --hidden-import "chromadb" ^
-        --hidden-import "sentence_transformers" ^
-        --hidden-import "duckduckgo_search" ^
-        --hidden-import "sounddevice" ^
-        --hidden-import "pygame" ^
-        --hidden-import "rich" ^
-        --hidden-import "httpx" ^
-        --hidden-import "psutil" ^
-        --collect-all "faster_whisper" ^
-        --collect-all "chromadb" ^
-        --collect-all "sentence_transformers" ^
-        --collect-all "tokenizers" ^
-        --collect-all "transformers" ^
-        --console ^
-        jarvis.py
-)
+pyinstaller jarvis.spec --noconfirm --clean 2>&1
 
 echo.
 if exist "dist\Jarvis.exe" (
+    :: Unblock the built exe so Windows doesn't block it either
+    powershell -Command "Unblock-File -Path '.\dist\Jarvis.exe'" >nul 2>&1
+
     echo  ==========================================
     echo   BUILD SUCCESSFUL
     echo  ==========================================
     echo.
     echo   Executable: dist\Jarvis.exe
     echo.
-    echo   HOW TO USE:
-    echo   1. Copy dist\Jarvis.exe anywhere you like
-    echo   2. Make sure Ollama is running: ollama serve
-    echo   3. Double-click Jarvis.exe
-    echo      OR run from command line for more options:
-    echo         Jarvis.exe --text
-    echo         Jarvis.exe --provider openai --model gpt-4o
+    echo   First run will download the AI model (~5GB).
+    echo   After that, Jarvis starts instantly.
     echo.
-    echo   NOTE: First run will download Whisper model (~150MB)
-    echo   and embedding model (~90MB). Subsequent runs are instant.
+    echo   To run:  double-click dist\Jarvis.exe
+    echo   Or:      dist\Jarvis.exe --text
+    echo.
+    echo   If Windows still blocks the .exe:
+    echo   Right-click Jarvis.exe ^> Properties ^> Unblock ^> OK
     echo.
 ) else (
     echo  ==========================================
-    echo   BUILD FAILED
+    echo   BUILD FAILED - See errors above
     echo  ==========================================
     echo.
-    echo  Check the output above for errors.
     echo  Common fixes:
-    echo   - pip install pyaudio  (if audio error)
+    echo   - Run as Administrator
+    echo   - pip install pyaudio
     echo   - pip install --upgrade pyinstaller
     echo.
 )
