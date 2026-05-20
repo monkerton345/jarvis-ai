@@ -7,7 +7,9 @@ from pathlib import Path
 from dataclasses import dataclass, field
 from dotenv import load_dotenv
 
-load_dotenv(Path(__file__).parent.parent.parent / ".env")
+# Load from AppData config first (set by first_run.py), then fallback to .env
+_config_path = os.environ.get("JARVIS_CONFIG") or str(Path(__file__).parent.parent.parent / ".env")
+load_dotenv(_config_path)
 
 
 @dataclass

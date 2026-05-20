@@ -35,6 +35,7 @@ a = Analysis(
         'jarvis.knowledge.base',
         'jarvis.knowledge.ingest',
         'jarvis.ui.terminal',
+        'jarvis.ui.first_run',
 
         # Third-party
         'faster_whisper',
