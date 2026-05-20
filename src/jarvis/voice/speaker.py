@@ -6,6 +6,7 @@ Fallback: pyttsx3 (offline, lower quality)
 import asyncio
 import io
 import logging
+import os
 import tempfile
 from pathlib import Path
 
@@ -67,7 +68,6 @@ class Speaker:
         """Use edge-tts for high-quality neural speech."""
         try:
             import edge_tts
-            import pygame
 
             communicate = edge_tts.Communicate(
                 text=text,
@@ -76,15 +76,29 @@ class Speaker:
                 pitch=self.pitch,
             )
 
-            # Stream to temp file, then play
-            with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
-                tmp_path = f.name
+            # Stream audio bytes into memory first — avoids Windows file-lock
+            # issue where edge-tts still holds the handle when pygame tries to open
+            audio_chunks = []
+            async for event in communicate.stream():
+                if event[0] == "audio":
+                    audio_chunks.append(event[1])
 
-            await communicate.save(tmp_path)
-            await self._play_audio(tmp_path)
+            if not audio_chunks:
+                return
 
-            # Clean up
-            Path(tmp_path).unlink(missing_ok=True)
+            audio_data = b"".join(audio_chunks)
+
+            # Write to temp file with explicit flush+close so Windows fully
+            # releases the handle before pygame (or the OS fallback) opens it
+            tmp_fd, tmp_path = tempfile.mkstemp(suffix=".mp3")
+            try:
+                with os.fdopen(tmp_fd, "wb") as f:
+                    f.write(audio_data)
+                    f.flush()
+                    os.fsync(f.fileno())   # force OS buffer flush on Windows
+                await self._play_audio(tmp_path)
+            finally:
+                Path(tmp_path).unlink(missing_ok=True)
 
         except Exception as e:
             logger.error(f"edge-tts error: {e}")
