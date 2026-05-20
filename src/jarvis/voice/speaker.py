@@ -91,7 +91,13 @@ class Speaker:
             await asyncio.get_event_loop().run_in_executor(None, self._speak_pyttsx3, text)
 
     async def _play_audio(self, path: str):
-        """Play audio file using pygame."""
+        """
+        Play audio file. Tries three methods in order:
+          1. pygame / pygame-ce  (preferred — installed by requirements.txt)
+          2. Windows Media Foundation via PowerShell  (Windows fallback, plays MP3)
+          3. afplay / mpg123  (macOS / Linux fallback)
+        """
+        # -- Method 1: pygame (or pygame-ce drop-in) --------------------------
         try:
             import pygame
             if not pygame.mixer.get_init():
@@ -100,20 +106,42 @@ class Speaker:
             pygame.mixer.music.play()
             while pygame.mixer.music.get_busy():
                 await asyncio.sleep(0.05)
+            return
         except Exception as e:
-            logger.error(f"Audio playback error: {e}")
-            # Fallback: try using system command
-            import subprocess, platform
-            system = platform.system()
-            try:
-                if system == "Windows":
-                    subprocess.run(["powershell", "-c", f"(New-Object Media.SoundPlayer '{path}').PlaySync()"], check=True)
-                elif system == "Darwin":
-                    subprocess.run(["afplay", path], check=True)
-                else:
-                    subprocess.run(["mpg123", "-q", path], check=True)
-            except Exception as e2:
-                logger.error(f"Fallback playback also failed: {e2}")
+            logger.warning(f"pygame playback unavailable ({e}), trying system fallback")
+
+        # -- Method 2 / 3: OS-level fallback ----------------------------------
+        import subprocess, platform
+        system = platform.system()
+        try:
+            if system == "Windows":
+                # Use Windows Media Foundation — plays MP3/WAV/OGG natively
+                ps_cmd = (
+                    "$mp = [System.Windows.Media.MediaPlayer]::new(); "
+                    f"$mp.Open([System.Uri]::new((Resolve-Path '{path}').Path)); "
+                    "$mp.Play(); "
+                    "Start-Sleep -Milliseconds 500; "
+                    "while ($mp.NaturalDuration.HasTimeSpan -eq $false) { Start-Sleep -Milliseconds 50 }; "
+                    "Start-Sleep -Seconds $mp.NaturalDuration.TimeSpan.TotalSeconds; "
+                    "$mp.Close()"
+                )
+                await asyncio.get_event_loop().run_in_executor(
+                    None,
+                    lambda: subprocess.run(
+                        ["powershell", "-NonInteractive", "-NoProfile", "-c", ps_cmd],
+                        check=True, capture_output=True
+                    )
+                )
+            elif system == "Darwin":
+                await asyncio.get_event_loop().run_in_executor(
+                    None, lambda: subprocess.run(["afplay", path], check=True)
+                )
+            else:
+                await asyncio.get_event_loop().run_in_executor(
+                    None, lambda: subprocess.run(["mpg123", "-q", path], check=True)
+                )
+        except Exception as e2:
+            logger.error(f"All audio playback methods failed: {e2}")
 
     def _speak_pyttsx3(self, text: str):
         """pyttsx3 fallback."""

@@ -29,7 +29,7 @@ numpy>=1.24.0
 
 # ── Text to Speech ────────────────────────────────────
 edge-tts>=6.1.12            # Free neural TTS (en-GB-RyanNeural)
-pygame>=2.5.0               # Audio playback
+pygame-ce>=2.5.0            # Audio playback (community edition — has wheels for all Python versions)
 
 # ── Wake Word ─────────────────────────────────────────
 # openwakeword>=0.6.0       # Uncomment for hands-free "Hey Jarvis"
