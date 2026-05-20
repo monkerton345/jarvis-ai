@@ -38,17 +38,21 @@ class Jarvis:
             pitch=config.audio.tts_pitch,
         )
 
-        self.ui.status("Loading language model...")
+        self.ui.status("Loading AI engine...")
         self.brain = Brain(
             provider=config.llm.provider,
-            model=config.llm.model,
-            ollama_host=config.llm.ollama_host,
-            openai_api_key=config.llm.openai_api_key,
-            anthropic_api_key=config.llm.anthropic_api_key,
+            model_path=config.llm.model_path,
+            n_gpu_layers=config.llm.n_gpu_layers,
+            n_ctx=config.llm.n_ctx,
+            groq_api_key=config.llm.groq_api_key,
+            groq_model=config.llm.groq_model,
+            openrouter_api_key=config.llm.openrouter_api_key,
+            openrouter_model=config.llm.openrouter_model,
             max_tokens=config.llm.max_tokens,
             temperature=config.llm.temperature,
             context_window=config.llm.context_window,
         )
+        self.ui.status(f"AI engine: {self.brain.backend_name}", icon="✓")
 
         self.ui.status("Initializing speech recognition...")
         self.listener = Listener(
