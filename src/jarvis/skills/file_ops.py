@@ -19,10 +19,13 @@ ALLOWED_BASE_PATHS = [
     Path.home() / "Projects",
     Path.cwd(),  # Current working directory
 ]
+FULL_ACCESS = os.getenv("JARVIS_FILE_FULL_ACCESS", "false").lower() in {"1", "true", "yes", "on"}
 
 
 def _is_safe_path(path: Path) -> bool:
     """Verify path is within allowed directories."""
+    if FULL_ACCESS:
+        return True
     try:
         path = path.resolve()
         for allowed in ALLOWED_BASE_PATHS:
@@ -60,9 +63,9 @@ def _resolve_path(path_str: str) -> Optional[Path]:
     expanded = os.path.expanduser(os.path.expandvars(path_str))
     path = Path(expanded)
     
-    # If relative, make it relative to home
+    # If relative, make it relative to current working directory
     if not path.is_absolute():
-        path = Path.home() / path
+        path = Path.cwd() / path
     
     if _is_safe_path(path):
         return path

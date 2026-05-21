@@ -62,7 +62,12 @@ class Speaker:
         """Synchronous speak (blocks until done)."""
         if not text or not text.strip():
             return
-        asyncio.run(self.speak_async(text))
+        try:
+            loop = asyncio.get_running_loop()
+            future = asyncio.run_coroutine_threadsafe(self.speak_async(text), loop)
+            future.result()
+        except RuntimeError:
+            asyncio.run(self.speak_async(text))
 
     async def _speak_edge(self, text: str):
         """Use edge-tts for high-quality neural speech."""
