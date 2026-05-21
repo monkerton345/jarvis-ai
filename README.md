@@ -96,15 +96,6 @@ cp .env.example .env
 python jarvis.py
 ```
 
-Or use one-click launchers from the repo root:
-
-```bash
-# Windows (double-click friendly)
-run_jarvis.bat
-
-# macOS / Linux
-./run_jarvis.sh
-```
 
 Jarvis will start up, greet you, and wait for the wake word.
 
