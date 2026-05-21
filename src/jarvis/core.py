@@ -5,6 +5,7 @@ Orchestrates: voice input -> skill routing -> LLM -> voice output
 import asyncio
 import logging
 import random
+import re
 import sys
 import threading
 from typing import Optional
@@ -162,6 +163,9 @@ class Jarvis:
         internet_ctx = self._route_internet(user_input)
         if internet_ctx:
             contexts.append(internet_ctx)
+            research_ctx = self._ingest_research_if_requested(user_input, internet_ctx)
+            if research_ctx:
+                contexts.append(research_ctx)
 
         # 3. Knowledge base (RAG)
         if self.kb:
@@ -177,8 +181,30 @@ class Jarvis:
         self.ui.jarvis_response(response)
         self._speak_sync(response)
 
+    def _ingest_research_if_requested(self, query: str, internet_ctx: str) -> Optional[str]:
+        """
+        If the user asked Jarvis to research a topic, persist the fetched
+        internet context into the knowledge base for future retrieval.
+        """
+        if not self.kb or not internet_ctx:
+            return None
+
+        q = query.lower()
+        triggers = ["research", "research this", "research that", "look into", "investigate"]
+        if not any(t in q for t in triggers):
+            return None
+
+        topic = re.sub(r"\s+", " ", query).strip()[:120]
+        chunks = self.kb.ingest_text(internet_ctx, source=f"research:{topic}")
+        if chunks <= 0:
+            return "Research completed, but knowledge storage was unavailable. Inform sir politely."
+        return (
+            f"Research complete and stored in long-term knowledge: {chunks} chunks "
+            f"under source 'research:{topic}'. Confirm this to the user in character."
+        )
+
     def _route_skills(self, query: str) -> Optional[str]:
-        from .skills import time_skill, weather, system, web, timers
+        from .skills import time_skill, weather, system, web, timers, file_ops
         from .knowledge.ingest import handle_ingest_command
 
         skill_funcs = [
@@ -187,6 +213,7 @@ class Jarvis:
             system.handle,
             web.handle,
             timers.handle,
+            file_ops.handle,
             lambda q: handle_ingest_command(q, self.kb) if self.kb else None,
         ]
 

@@ -28,6 +28,7 @@ class WakeWordDetector:
         self.hotkey = hotkey
         self._running = False
         self._method = None
+        self._quick_model = None
         self._detect_method()
 
     def _detect_method(self):
@@ -38,12 +39,13 @@ class WakeWordDetector:
             logger.info("Wake word: openwakeword")
         except ImportError:
             try:
+                self._method = "continuous_stt"
+                logger.info("Wake word: continuous STT (slower but functional)")
+                import faster_whisper  # noqa: F401
+            except ImportError:
                 import keyboard  # noqa: F401
                 self._method = "hotkey"
                 logger.info(f"Wake word: hotkey ({self.hotkey})")
-            except ImportError:
-                self._method = "continuous_stt"
-                logger.info("Wake word: continuous STT (slower but functional)")
 
     def start(self, on_wake: Optional[Callable] = None):
         """Start listening for wake word in background."""
@@ -72,7 +74,7 @@ class WakeWordDetector:
             import sounddevice as sd
             import numpy as np
 
-            oww_model = Model(wakeword_models=["hey_jarvis"], inference_framework="onnx")
+            oww_model = Model(inference_framework="onnx")
             chunk_size = 1280
 
             with sd.InputStream(
@@ -159,8 +161,9 @@ class WakeWordDetector:
         """Fast transcription for wake word detection."""
         try:
             from faster_whisper import WhisperModel
-            model = WhisperModel("tiny.en", device="cpu", compute_type="int8")
-            segments, _ = model.transcribe(audio, beam_size=1, language="en")
+            if self._quick_model is None:
+                self._quick_model = WhisperModel("tiny.en", device="cpu", compute_type="int8")
+            segments, _ = self._quick_model.transcribe(audio, beam_size=1, language="en")
             return " ".join(s.text for s in segments).strip()
         except Exception:
             return None

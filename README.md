@@ -96,6 +96,16 @@ cp .env.example .env
 python jarvis.py
 ```
 
+Or use one-click launchers from the repo root:
+
+```bash
+# Windows (double-click friendly)
+run_jarvis.bat
+
+# macOS / Linux
+./run_jarvis.sh
+```
+
 Jarvis will start up, greet you, and wait for the wake word.
 
 ---
@@ -120,6 +130,7 @@ Type directly in the terminal — no microphone needed.
 | "Set a timer for 10 minutes" | Fires spoken alert in 10 min |
 | "Open Chrome" | Launches Chrome |
 | "Search for SpaceX latest news" | Opens Google search |
+| "Research quantum batteries and remember it" | Searches the web, answers, and stores findings in knowledge memory |
 | "How much RAM am I using?" | Reports system stats |
 | "Tell me a joke" | Delivers a dry Stark-approved joke |
 | "Clear history" | Resets conversation context |
@@ -139,6 +150,7 @@ All options live in `.env`. Key settings:
 | `TTS_VOICE` | `en-GB-RyanNeural` | TTS voice (run `--list-voices` to see options) |
 | `USE_WAKE_WORD` | `true` | Enable/disable wake word detection |
 | `USER_TITLE` | `sir` | How Jarvis addresses you |
+| `JARVIS_FILE_FULL_ACCESS` | `false` | If `true`, disables file path safety boundaries for file create/read/edit/delete |
 
 ### CLI flags
 
