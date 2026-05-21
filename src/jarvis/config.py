@@ -26,6 +26,7 @@ class AudioConfig:
     tts_pitch: str = "+0Hz"
     wake_words: list = field(default_factory=lambda: ["jarvis", "hey jarvis"])
     use_wake_word: bool = True
+    auto_greet_on_presence: bool = True
 
 
 @dataclass
@@ -85,6 +86,7 @@ def load_config() -> JarvisConfig:
     config.audio.stt_device     = os.getenv("WHISPER_DEVICE", "cpu")
     config.audio.tts_voice      = os.getenv("TTS_VOICE", "en-GB-RyanNeural")
     config.audio.use_wake_word  = os.getenv("USE_WAKE_WORD", "true").lower() == "true"
+    config.audio.auto_greet_on_presence = os.getenv("AUTO_GREET_ON_PRESENCE", "true").lower() == "true"
 
     # Identity
     config.user_title = os.getenv("USER_TITLE", "sir")
