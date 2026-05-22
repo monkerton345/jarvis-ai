@@ -100,6 +100,10 @@ Or use the quick launcher scripts:
 
 ```bash
 # Windows
+Or use one-click launchers from the repo root:
+
+```bash
+# Windows (double-click friendly)
 run_jarvis.bat
 
 # macOS / Linux
@@ -150,6 +154,7 @@ All options live in `.env`. Key settings:
 | `WHISPER_MODEL` | `base.en` | STT accuracy vs speed (`tiny.en` → `medium.en`) |
 | `TTS_VOICE` | `en-GB-RyanNeural` | TTS voice (run `--list-voices` to see options) |
 | `USE_WAKE_WORD` | `true` | Enable/disable wake word detection |
+| `AUTO_GREET_ON_PRESENCE` | `true` | If true, Jarvis greets when nearby voice/activity is detected and starts listening |
 | `USER_TITLE` | `sir` | How Jarvis addresses you |
 | `JARVIS_FILE_FULL_ACCESS` | `false` | If `true`, disables file path safety boundaries for file create/read/edit/delete |
 

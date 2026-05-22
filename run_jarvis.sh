@@ -6,4 +6,7 @@ if [[ -x ".venv/bin/python" ]]; then
   exec .venv/bin/python jarvis.py
 fi
 
-exec python jarvis.py
+echo "[JARVIS] Virtual environment not found at .venv"
+echo "[JARVIS] Run setup first:"
+echo "    python setup_jarvis.py"
+exit 1

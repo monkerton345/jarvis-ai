@@ -8,6 +8,7 @@ import random
 import re
 import sys
 import threading
+import time
 from typing import Optional
 
 from .config import JarvisConfig
@@ -30,6 +31,7 @@ class Jarvis:
         self._running = False
         self._listening = False
         self._wake_lock = threading.Lock()
+        self._presence_last_greet = 0.0
 
         # ── Voice ──────────────────────────────────────────────────────────
         self.ui.status("Initializing speech synthesis...")
@@ -96,6 +98,7 @@ class Jarvis:
 
         if self._mode == "voice" and self.config.audio.use_wake_word:
             self._start_wake_word_detector()
+            self._start_presence_detector()
             self.ui.status("Listening for wake word. Say 'Jarvis' or press Ctrl+Shift+J.")
             self._text_loop()
         else:
@@ -129,6 +132,53 @@ class Jarvis:
             return
 
         self._process(text)
+
+    def _start_presence_detector(self):
+        if not self.config.audio.auto_greet_on_presence:
+            return
+        t = threading.Thread(target=self._run_presence_detector, daemon=True)
+        t.start()
+
+    def _run_presence_detector(self):
+        """
+        Lightweight presence detector using mic energy.
+        If someone is near and speaking/moving audio appears, Jarvis greets and listens.
+        """
+        try:
+            import sounddevice as sd
+            import numpy as np
+            sample_rate = 16000
+            chunk_size = int(sample_rate * 0.4)
+            threshold = max(0.006, self.config.audio.silence_threshold * 0.8)
+            cooldown_seconds = 45
+
+            while self._running:
+                data, _ = sd.read(chunk_size, samplerate=sample_rate, channels=1, dtype="float32")
+                rms = float(np.sqrt(np.mean(data ** 2)))
+                if rms < threshold:
+                    continue
+                if (time.time() - self._presence_last_greet) < cooldown_seconds:
+                    continue
+                self._presence_last_greet = time.time()
+                self._on_presence_detected()
+        except Exception as e:
+            logger.debug(f"Presence detector unavailable: {e}")
+
+    def _on_presence_detected(self):
+        with self._wake_lock:
+            if self._listening:
+                return
+            self._listening = True
+        try:
+            greeting = "Good to see you, sir. Shall I begin?"
+            self.ui.jarvis_response(greeting)
+            self._speak_sync(greeting)
+            self.ui.show_listening()
+            text = self.listener.listen_once(timeout=8)
+            if text:
+                self._process(text)
+        finally:
+            self._listening = False
 
     def _text_loop(self):
         """Main text input loop."""
